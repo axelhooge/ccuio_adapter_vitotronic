@@ -1,0 +1,9 @@
+{
+    "enabled": false,
+    "settings": {
+        "firstId":    98000,
+	"host": "127.0.0.1",
+        "xmlpath": "/etc/vcontrold/",
+        "log" : true
+    }
+}

@@ -1,0 +1,167 @@
+<style>
+    .noLog {
+        background-color: #ffaaaa;
+    }
+    .log {
+        background-color: #aaffaa;
+    }
+    option {
+        background-color: white;
+    }
+</style>
+<table style="font-size: 12px">
+    <tr>
+        <td>Enabled:</td>
+        <td>
+            <select id="vitotronic_enabled">
+                <option value="false">false</option>
+                <option value="true">true</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>Host:</td>
+        <td><input id="vitotronic_settings_host" type="text"/></td>
+    </tr>  
+   <tr>
+        <td>Pfad zu vcontrold Konfigurationen:</td>
+        <td><input id="vitotronic_settings_xmlpath" type="text"/><input type="button" id="vitotronic_xmlpath_update" value="update"></td>
+    </tr>
+    <tr>
+        <td>Poll interval (sec):</td>
+        <td><input id="vitotronic_settings_poll" type="text"/></td>
+    </tr>
+
+
+</table>
+<h2>Commands:</h2>
+<div><table id="commands" style="font-size: 12px"></table></div>
+<div id="info"></div>
+<script type="text/javascript">
+    var socket = io.connect( $(location).attr('protocol') + '//' +  $(location).attr('host') + "?key="+socketSession);
+    var access=['', 'R', 'W', 'R/W'];
+
+    if (currentAdapterSettings.enabled) {
+        $("#vitotronic_enabled option[value='false']").removeAttr("selected");
+        $("#vitotronic_enabled option[value='true']").attr("selected", true);
+    } else {
+        $("#vitotronic_enabled option[value='true']").removeAttr("selected");
+        $("#vitotronic_enabled option[value='false']").attr("selected", true);
+    }
+
+    $("#vitotronic_enabled").change(function () {
+        currentAdapterSettings.enabled = ($("#vitotronic_enabled option:selected").val() == "false" ? false : true);
+        updateAdapterSettings();
+    });
+
+  
+    $("#vitotronic_settings_host").val(currentAdapterSettings.settings.host);
+    $("#vitotronic_settings_host").change(function () {
+        currentAdapterSettings.settings.host = $("#vitotronic_settings_host").val();
+        updateAdapterSettings();
+    });
+
+    $("#vitotronic_settings_xmlpath").val(currentAdapterSettings.settings.xmlpath);
+
+    $("#vitotronic_xmlpath_update").click(function () {
+        currentAdapterSettings.settings.xmlpath = $("#vitotronic_settings_xmlpath").val();
+        updateAdapterSettings();
+
+	$('#info').html("Lese Konfiguration...");
+		
+	readConfig();
+	
+    });
+
+    $("#vitotronic_settings_poll").val(currentAdapterSettings.settings.pollIntervalSec);
+
+    $("#vitotronic_settings_poll").change(function () {
+        currentAdapterSettings.settings.pollIntervalSec = $("#vitotronic_settings_poll").val();
+        updateAdapterSettings();
+    });
+
+    function readConfig() {
+	socket.emit('execScript', "/adapter/vitotronic/vitotronicReadConfig.js", [currentAdapterSettings.settings.xmlpath], function(script, arg, result) {
+            if (!result || typeof result == 'string') {
+                $('#info').html("Fehler:" + result).css({color: "red"});
+                return;
+            } else {
+                $('#info').html("OK!").css({color: "green"});
+
+		if(typeof currentAdapterSettings.settings.config.datapoints != 'undefined') {
+                    Object.keys(currentAdapterSettings.settings.config.datapoints).forEach(function(key) {
+
+                        if(typeof result.datapoints[key] != 'undefined') {
+                                result.datapoints[key].log = currentAdapterSettings.settings.config.datapoints[key].log;
+                        }
+                    });
+		}
+		updateDataPoints(result);
+		currentAdapterSettings.settings.config = result;
+		updateAdapterSettings();
+                return;
+	    }
+	});
+    }
+
+   function updateDataPoints(config) {
+	var commands = config.datapoints;
+	$('#commands').empty();
+        $('#commands').append('<tr><th>Name</th><th>Bechreibung</th><th>Zugriff</th><th>Loggen?</th>');
+	Object.keys(commands).forEach(function(key) {
+            var c = commands[key];
+            if(typeof(c.pollInterval) == 'undefined') {
+                c.pollInterval = -10;
+            }
+            
+            var tr = $('<tr>');
+            var tds = $(
+                '<td>'+c.name+' (' + c.id + ')</td><td>'+c.description+'</td>'+
+                '<td>'+access[c.access]+'</td><td>'+
+                
+                (c.access & 1 ? getPollSelect(c.name, c.pollInterval) : '') +
+                '</td>');
+            tr.append(tds);
+            $('#commands').append(tr);
+	});
+        
+        var $select = $('#commands select');
+        $select.each(function() {
+            $(this).addClass($(this).children(':selected').val() == -1 ? 'noLog' : 'log');
+        }).on('change', function(ev) {
+            $(this).attr('class', '').addClass($(this).children(':selected').val() == -1 ? 'noLog' : 'log');
+        });
+        //(c.access & 1 ? '<input type="checkbox" '+(c.log ? 'checked="checked" ' : '')+'class="getValue" id="'+c.name+'"/>' : '') +
+	$('.getValue').click(function(e) {
+            config.datapoints[$($(this)[0]).attr('id')].pollIntervall = $($(this)[0]).val();
+            console.log($($(this)[0]).val());
+            currentAdapterSettings.settings.config = config;
+            updateAdapterSettings();
+	});
+   }
+
+    function getPollSelect(name, act) {
+        var str = '<select id="'+name+'" class="getValue">' +
+            '<option ' + (act == -1 ? 'selected="selected"' : '') + 'value="-1">Nicht loggen</option>' + 
+            '<option ' + (act == 0 ? 'selected="selected"' : '') + 'value="0">moeglichst Oft</option>' +
+            '<option ' + (act == 10 ? 'selected="selected"' : '') + 'value="10">Alle 10 Sekunden</option>' + 
+            '<option ' + (act == 30 ? 'selected="selected"' : '') + 'value="30">Alle 30 Sekunden</option>' + 
+            '<option ' + (act == 60 ? 'selected="selected"' : '') + 'value="60">Jede Minute</option>' + 
+            '<option ' + (act == 120 ? 'selected="selected"' : '') + 'value="120">Alle 2 Minuten</option>' + 
+            '<option ' + (act == 300 ? 'selected="selected"' : '') + 'value="300">Alle 5 Minuten</option>' + 
+            '<option ' + (act == 600 ? 'selected="selected"' : '') + 'value="600">Alle 10 Minuten</option>' + 
+            '<option ' + (act == 900 ? 'selected="selected"' : '') + 'value="900">Alle 15 Minuten</option>' + 
+            '<option ' + (act == 1800 ? 'selected="selected"' : '') + 'value="1800">Alle 30 Minuten</option>' + 
+            '<option ' + (act == 2700 ? 'selected="selected"' : '') + 'value="2700">Alle 45 Minuten</option>' + 
+            '<option ' + (act == 3600 ? 'selected="selected"' : '') + 'value="3600">Jede Stunde</option>' + 
+            '<option ' + (act == 7200 ? 'selected="selected"' : '') + 'value="7200">Alle 2 Stunden</option>' + 
+            '<option ' + (act == 21600 ? 'selected="selected"' : '') + 'value="21600">Alle 6 Stunden</option>' + 
+            '<option ' + (act == 43200 ? 'selected="selected"' : '') + 'value="43200">Alle 12 Stunden</option>' + 
+            '<option ' + (act == 86400 ? 'selected="selected"' : '') + 'value="86400">Alle 24 Stunden</option>' +
+            '</select>';
+        return str;
+    }
+   if(typeof currentAdapterSettings.settings.config != 'undefined') {
+	updateDataPoints(currentAdapterSettings.settings.config);
+   }
+</script>
