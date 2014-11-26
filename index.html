@@ -34,7 +34,75 @@
         <h1>
 <a id="ccuio_adapter_vitotronic" class="anchor" href="#ccuio_adapter_vitotronic" aria-hidden="true"><span class="octicon octicon-link"></span></a>ccuio_adapter_vitotronic</h1>
 
-<p>Adapter für ccu.io um Daten mittels vcontrold aus einer vitotronic abzufragen.</p>
+<p>Ein Adapter für ccu.io um Daten mittels vcontrold aus einer vitotronic abzufragen und in ccu.io zu visualisieren oder manipulieren.</p>
+
+<h2>
+<a id="voraussetzungen" class="anchor" href="#voraussetzungen" aria-hidden="true"><span class="octicon octicon-link"></span></a>Voraussetzungen</h2>
+
+<p>Es muss bereits ein vcontrold laufen und über einen Optolink-Adapter mit der Vitotronic verbunden sein. Außerdem muss natürlich ein ccu.io installiert sein.</p>
+
+<p>Sollte eines davon nicht auf Dich zutreffen, informiere Dich zunächst auf:</p>
+
+<ol>
+<li><p><a href="http://openv.wikispaces.com/vcontrold">http://openv.wikispaces.com/vcontrold</a></p></li>
+<li><p><a href="http://ccu.io/">http://ccu.io/</a></p></li>
+</ol>
+
+<p>Bei mir läuft beides auf einem Banana Pi. Als Optolink-Adapter verwende ich den Nachbau, der über ein Community-Mitglied des Openv Wikis verfügbar ist.</p>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>Nach dem Download z.B. der ZIP-Datei muss das Verzeichnis vitotronic (unterhalb von adapter) in des Unterverzeichnis "adapter" Eurer ccu.io Installation kopiert werden.
+Die Datei aus dem Verzeichnis datastore in das gleichnamige Verzeichnis unterhalb von ccu.io</p>
+
+<h2>
+<a id="konfiguration" class="anchor" href="#konfiguration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Konfiguration</h2>
+
+<p>In der Konfiguration des Adapters könnt Ihr folgende Dinge einstellen:</p>
+
+<p><strong>Enabled:</strong> true, wenn der Adapter aktiviert werden soll. Sonst false</p>
+
+<p><strong>ccu.io.log schreiben?:</strong> true, wenn Informationen in die ccu.io Log-Datei geschrieben werden sollen - z.B. für das Aufspüren von Fehlern.</p>
+
+<p><strong>vcontrold - Host:</strong> IP-Adresse des Systems, auf dem vcontrold läuft. <em>127.0.0.1</em> (Default), wenn vcontrold und ccu.io auf dem gleichen System laufen.</p>
+
+<p><strong>Pfad zu vcontrold Konfigurationen:</strong> Verzeichnis, in dem die XML-Konfigurationsdateien von vcontrold liegen. Standard ist <em>/etc/vcontrold/</em>. Wenn vcontrold auf einem anderen Rechner läuft, können die XML-Dateien einfach auf das System kopiert werden, auf dem ccu.io läuft.</p>
+
+<p>Wenn vcontrol bei Euch lauffähig ist, kennt Ihr sicherlich die Dateien vcontrold.xml und vito.xml, die die Konfigurationen enthalten. Diese kann der Adapter selbständig auslesen, was aber einige Voraussetzungen erfordert (Die in den fertigen Configs, die man so findet immer der Fall ist)</p>
+
+<p><strong>Beispiel vito.xml</strong></p>
+
+<div class="highlight highlight-xml"><pre>    &lt;<span class="pl-ent">command</span> <span class="pl-e">name</span>=<span class="pl-s1"><span class="pl-pds">'</span>getTempRaumRedSollM1<span class="pl-pds">'</span></span> <span class="pl-e">protocmd</span>=<span class="pl-s1"><span class="pl-pds">'</span>getaddr<span class="pl-pds">'</span></span>&gt;
+        &lt;<span class="pl-ent">addr</span>&gt;2307&lt;/<span class="pl-ent">addr</span>&gt;
+        &lt;<span class="pl-ent">len</span>&gt;1&lt;/<span class="pl-ent">len</span>&gt;
+        &lt;<span class="pl-ent">unit</span>&gt;UTI&lt;/<span class="pl-ent">unit</span>&gt;
+        &lt;<span class="pl-ent">description</span>&gt;Ermittle die Raumsolltemperatur reduziert M1 in Grad C&lt;/<span class="pl-ent">description</span>&gt;
+    &lt;/<span class="pl-ent">command</span>&gt;
+    &lt;<span class="pl-ent">command</span> <span class="pl-e">name</span>=<span class="pl-s1"><span class="pl-pds">'</span>setTempRaumRedSollM1<span class="pl-pds">'</span></span> <span class="pl-e">protocmd</span>=<span class="pl-s1"><span class="pl-pds">'</span>setaddr<span class="pl-pds">'</span></span>&gt;
+        &lt;<span class="pl-ent">addr</span>&gt;2307&lt;/<span class="pl-ent">addr</span>&gt;
+        &lt;<span class="pl-ent">len</span>&gt;1&lt;/<span class="pl-ent">len</span>&gt;
+        &lt;<span class="pl-ent">unit</span>&gt;UTI&lt;/<span class="pl-ent">unit</span>&gt;
+        &lt;<span class="pl-ent">description</span>&gt;Setze die Raumsolltemperatur reduziert M1 in Grad C&lt;/<span class="pl-ent">description</span>&gt;
+    &lt;/<span class="pl-ent">command</span>&gt;</pre></div>
+
+<p>Im Feld <code>protocmd</code> muss hier immer <code>getaddr</code> oder <code>setaddr</code> stehen. Dies ist bei den überall veröffentlichten Configs meistens der Fall, kann aber theoretisch auch anders heißen.
+Damit der Adapter get- und set- Events auf den gleichen Datenpunkt zurückführen kann, müssen die Commands immer den gleichen Namen tragen.</p>
+
+<p>z.B. setDatenpunkt1 und getDatenpunkt1</p>
+
+<p>In diesem Fall gibt es in ccu.io einen neuen Datenpunkt, der nur Datenpunkt1 heißt. Das get und set wird also abgeschnitten.
+Natürlich ist der set-Command optional. Viele Informationen aus der vitotronic sind ja readonly.</p>
+
+<p>Sind alle Daten eingegeben, kann mit dem Button "update" der Prozess gestartet werden, der die XML Dateien einliest.
+Danach erscheinen darunter alle Datenpunkte, die der Adapter gefunden hat.
+Hier muss dann entschieden werden, welche Datenpunkte geloggt werden sollen und wie oft:
+<img src="http://img5.fotos-hochladen.net/uploads/loggingjybn9es7hi.png" alt="Logging-Config"></p>
+
+<p>Hierzu einige Empfehlungen: Aufgrund technischer Eigenschaften der Vitotronic-Schnittstelle kann es leicht mal 5 Sekunden dauern, um einen Wert abzufragen. Gibt man nun bei 30 Datenpunkten an, dass die Werte "möglichst oft" oder "alle 10 Sekunden" geloggt werden sollen, wird das dazu führen, dass man nur ca. 1 Wert je 2-3 Minuten hat. Das kann reichen, um den einen oder anderen Peak in einer Grafik zu verpassen. Man sollte also genau überlegen, welche Daten man wirklich braucht und sinnvolle Intervalle wählen. Bei schnell ändernden Werten, wie der Leistung oder der Kesseltemperatur sollte man z.B. "möglichst oft" auswählen. Bei der Aussentemperatur reichen sicher auch mehrere Minuten.</p>
+
+<p>Hier mal ein Beispiel einer mit Highcharts erstellen Grafik mit einigen Daten aus der Vitotronic.
+<img src="http://www.fotos-hochladen.net/uploads/aufgedreht4viv63duj5qk0.png" alt="Beispielgraph"></p>
       </section>
     </div>
 
