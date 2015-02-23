@@ -151,6 +151,7 @@ function stepPolling() {
     
     var actualMinWaitTime = 1000000;
     var time = Date.now();
+
     for(var i = 0; i < toPoll.length; i++) {
         if(typeof(toPoll[i].lastPoll) == 'undefined') {
             toPoll[i].lastPoll = 0;
@@ -158,8 +159,9 @@ function stepPolling() {
         
         var nextRun = toPoll[i].lastPoll + (toPoll[i].pollInterval * 1000)
         var nextDiff = nextRun - time;
-        
+
         if(time < nextRun) {
+            actualMinWaitTime = nextDiff;
             continue;
         }
         
@@ -168,8 +170,6 @@ function stepPolling() {
             actual = i;
         }
     }
-
-    myLog("Step to "+toPoll[actual].name);
     
     if(actual === -1) {
         setTimeout(function () {
@@ -177,6 +177,7 @@ function stepPolling() {
         }, actualMinWaitTime);
 
     } else {
+	myLog("Step to "+toPoll[actual].name);
         telnetSocket.write('get' + toPoll[actual].name + '\n');
     }
 }

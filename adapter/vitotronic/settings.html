@@ -100,7 +100,8 @@
             } else {
                 $('#info').html("OK!").css({color: "green"});
 
-                if(typeof currentAdapterSettings.settings.config.datapoints != 'undefined') {
+                if( typeof currentAdapterSettings.settings.config != 'undefined'
+                 && typeof currentAdapterSettings.settings.config.datapoints != 'undefined') {
                     Object.keys(currentAdapterSettings.settings.config.datapoints).forEach(function(key) {
 
                         if(typeof result.datapoints[key] != 'undefined') {
